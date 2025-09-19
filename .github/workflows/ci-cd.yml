@@ -1,4 +1,4 @@
-name: Build and Deploy Wisecow
+name: Build, Push, and Deploy Wisecow
 
 on:
   push:
@@ -23,3 +23,26 @@ jobs:
       run: |
         docker build -t sagarpatade1900/wisecow:latest .
         docker push sagarpatade1900/wisecow:latest
+
+  deploy:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Configure kubeconfig
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+        kubectl rollout status deployment/wisecow-deployment
